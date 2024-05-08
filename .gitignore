@@ -89,3 +89,6 @@ local_settings.py
 db.sqlite3
 venv/
 .vscode/
+
+event_images/
+product_images/

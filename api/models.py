@@ -20,12 +20,6 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class Event(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-
-
 class Rating(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -36,22 +30,25 @@ class Rating(models.Model):
 
 class UserProductLink(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    event = models.ForeignKey("Event", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default="1")
     status = models.CharField(max_length=50)
     quantity = models.IntegerField()
 
 
-class Note(models.Model):
+class Event(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    data = models.TextField()
+    name = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="event_images/")
+    notes = models.TextField(blank=True, null=True)
+    description = models.TextField()
 
 
 class Todo(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default="1")
     data = models.TextField()
+    status = models.BooleanField(max_length=50, default=None, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)

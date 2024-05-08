@@ -3,7 +3,7 @@ import base64
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
-from .models import Product
+from ..models import Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -27,16 +27,17 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         try:
-            decoded_bytes = base64.b64decode(data.pop("encoded_image"))
-            data["image"] = data["image"] = ContentFile(decoded_bytes, name="image.jpg")
+            encoded_image = data.pop("encoded_image").split(";base64,")[-1]
+            decoded_bytes = base64.b64decode(encoded_image)
+            data["image"] = ContentFile(decoded_bytes, name="image.jpg")
             super().validate(data)
             return data
         except Exception as e:
-            raise serializers.ValidationError(str(e))
+            raise serializers.ValidationError(str(e)) from e
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    encoded_image = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -51,13 +52,24 @@ class ProductListSerializer(serializers.ModelSerializer):
             "district",
             "mobile",
             "chat",
-            "encoded_image",
+            "image",
         ]
         read_only_fields = ["id"]
 
-    def get_encoded_image(self, instance):
+    def get_image(self, instance):
         if instance.image:
             with instance.image.open("rb") as img_file:
-                encoded_string = base64.b64encode(img_file.read()).decode("utf-8")
-                return encoded_string
+                image_data = img_file.read()
+                encoded_image = base64.b64encode(image_data).decode("utf-8")
+
+                if instance.image.name.endswith(".png"):
+                    return f"data:image/png;base64,{encoded_image}"
+                elif instance.image.name.endswith(
+                    ".jpg"
+                ) or instance.image.name.endswith(".jpeg"):
+                    return f"data:image/jpeg;base64,{encoded_image}"
+                elif instance.image.name.endswith(".gif"):
+                    return f"data:image/gif;base64,{encoded_image}"
+                else:
+                    return f"data:image/png;base64,{encoded_image}"
         return None

@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product
+from ..models import Product
 from . import serializers
 from utils.response import CustomResponse, HandleException
 from utils.exceptions import ValidationError
@@ -19,18 +19,17 @@ class ProductAPIView(APIView):
 
     def post(self, request):
         serializer = serializers.ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return CustomResponse(
-                status_code=status.HTTP_201_CREATED,
-                message="Product created successfully",
-                data=serializer.data,
-            ).to_dict()
-        else:
+        if not serializer.is_valid():
             return HandleException(
                 message="Invalid data provided",
                 data=serializer.errors,
             ).send_response()
+        serializer.save()
+        return CustomResponse(
+            status_code=status.HTTP_201_CREATED,
+            message="Product created successfully",
+            data=serializer.data,
+        ).to_dict()
 
     def delete(self, request, pk):
         try:
