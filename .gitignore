@@ -92,3 +92,4 @@ venv/
 
 event_images/
 product_images/
+migrations/

@@ -2,11 +2,12 @@ import base64
 
 from django.core.files.base import ContentFile
 from rest_framework import serializers
+from ..models import Event, UserProductLink
 
 from ..models import Product
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSaveSerializer(serializers.ModelSerializer):
     encoded_image = serializers.CharField(write_only=True, required=True)
 
     class Meta:
@@ -44,6 +45,43 @@ class ProductListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "description",
+            "company_name",
+            "price",
+            "max_quantity",
+            "state",
+            "district",
+            "image",
+        ]
+        read_only_fields = ["id"]
+
+    def get_image(self, instance):
+        if instance.image:
+            with instance.image.open("rb") as img_file:
+                image_data = img_file.read()
+                encoded_image = base64.b64encode(image_data).decode("utf-8")
+
+                if instance.image.name.endswith(".png"):
+                    return f"data:image/png;base64,{encoded_image}"
+                elif instance.image.name.endswith(
+                    ".jpg"
+                ) or instance.image.name.endswith(".jpeg"):
+                    return f"data:image/jpeg;base64,{encoded_image}"
+                elif instance.image.name.endswith(".gif"):
+                    return f"data:image/gif;base64,{encoded_image}"
+                else:
+                    return f"data:image/png;base64,{encoded_image}"
+        return None
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "name",
             "company_name",
             "description",
             "price",
@@ -73,3 +111,10 @@ class ProductListSerializer(serializers.ModelSerializer):
                 else:
                     return f"data:image/png;base64,{encoded_image}"
         return None
+
+
+class ProductEventSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserProductLink
+        fields = ["event", "quantity", "product"]

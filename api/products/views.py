@@ -8,9 +8,14 @@ from utils.exceptions import ValidationError
 
 
 class ProductAPIView(APIView):
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = serializers.ProductListSerializer(products, many=True)
+    def get(self, request, pk=None):
+        if pk is None:
+            products = Product.objects.all()
+            serializer = serializers.ProductListSerializer(products, many=True)
+        else:
+            product = Product.objects.get(pk=pk)
+            serializer = serializers.ProductSerializer(product)
+
         return CustomResponse(
             status_code=status.HTTP_200_OK,
             message="Products retrieved successfully",
@@ -18,7 +23,7 @@ class ProductAPIView(APIView):
         ).to_dict()
 
     def post(self, request):
-        serializer = serializers.ProductSerializer(data=request.data)
+        serializer = serializers.ProductSaveSerializer(data=request.data)
         if not serializer.is_valid():
             return HandleException(
                 message="Invalid data provided",
@@ -47,21 +52,34 @@ class ProductAPIView(APIView):
     def patch(self, request, pk):
         try:
             product = Product.objects.get(pk=pk)
-            serializer = serializers.ProductSerializer(
+            serializer = serializers.ProductSaveSerializer(
                 product, data=request.data, partial=True
             )
-            if serializer.is_valid():
-                serializer.save()
-                return CustomResponse(
-                    status_code=status.HTTP_200_OK,
-                    message="Product updated successfully",
-                    data=serializer.data,
-                ).to_dict()
-            else:
+            if not serializer.is_valid():
                 return HandleException(
                     message="Invalid data provided", exception=serializer.errors
                 ).send_response()
+            serializer.save()
+            return CustomResponse(
+                status_code=status.HTTP_200_OK,
+                message="Product updated successfully",
+                data=serializer.data,
+            ).to_dict()
         except Product.DoesNotExist as e:
             return HandleException(
                 message="Product does not exist", exception=e
             ).send_response()
+
+
+class AddProductToEvent(APIView):
+    def post(self, request):
+        serializer = serializers.ProductEventSerializer(data=request.data, many=True)
+        if not serializer.is_valid():
+            return HandleException(
+                message="Invalid data provided", data=serializer.errors
+            ).send_response()
+        serializer.save()
+        return CustomResponse(
+            status_code=status.HTTP_200_OK,
+            message="Product added to event successfully",
+        ).to_dict()

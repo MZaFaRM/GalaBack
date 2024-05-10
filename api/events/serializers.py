@@ -14,6 +14,27 @@ class TodoSerializer(serializers.ModelSerializer):
 
 
 class UserProductLinkSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="product.name")
+    mobile = serializers.CharField(source="product.mobile")
+    chat = serializers.CharField(source="product.chat")
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, instance):
+        if image := instance.product.image:
+            with image.open("rb") as img_file:
+                image_data = img_file.read()
+                encoded_image = base64.b64encode(image_data).decode("utf-8")
+
+                if image.name.endswith(".png"):
+                    return f"data:image/png;base64,{encoded_image}"
+                elif image.name.endswith(".jpg") or image.name.endswith(".jpeg"):
+                    return f"data:image/jpeg;base64,{encoded_image}"
+                elif image.name.endswith(".gif"):
+                    return f"data:image/gif;base64,{encoded_image}"
+                else:
+                    return f"data:image/png;base64,{encoded_image}"
+        return None
+
     class Meta:
         model = UserProductLink
         fields = "__all__"
@@ -30,6 +51,11 @@ class BaseEventSerializer(serializers.ModelSerializer):
 class GetEventSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     todos = serializers.SerializerMethodField()
+    products = serializers.SerializerMethodField()
+
+    def get_products(self, instance):
+        products = UserProductLink.objects.filter(event=instance).order_by("created_at")
+        return UserProductLinkSerializer(products, many=True).data
 
     def get_todos(self, instance):
         todos = Todo.objects.filter(event=instance).order_by("created_at")
@@ -37,8 +63,8 @@ class GetEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ["id", "name", "description", "image", "todos", "notes"]
         read_only_fields = ["id"]
+        fields = ["id", "name", "description", "image", "todos", "notes", "products"]
 
     def get_image(self, instance):
         if instance.image:
@@ -59,10 +85,45 @@ class GetEventSerializer(serializers.ModelSerializer):
         return None
 
 
+class GetEventListSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+        read_only_fields = ["id"]
+        fields = ["id", "name", "description", "image"]
+
+    def get_image(self, instance):
+        if instance.image:
+            with instance.image.open("rb") as img_file:
+                image_data = img_file.read()
+                encoded_image = base64.b64encode(image_data).decode("utf-8")
+
+                if instance.image.name.endswith(".png"):
+                    return f"data:image/png;base64,{encoded_image}"
+                elif instance.image.name.endswith(
+                    ".jpg"
+                ) or instance.image.name.endswith(".jpeg"):
+                    return f"data:image/jpeg;base64,{encoded_image}"
+                elif instance.image.name.endswith(".gif"):
+                    return f"data:image/gif;base64,{encoded_image}"
+                else:
+                    return f"data:image/png;base64,{encoded_image}"
+        return None
+
+
+class BaseProductSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    status = serializers.CharField()
+
+    class Meta:
+        fields = ["id", "status"]
+
+
 class EventSerializer(serializers.Serializer):
     todos = TodoSerializer(many=True)
-    products = UserProductLinkSerializer(many=True, read_only=True)
     event = BaseEventSerializer()
+    products = BaseProductSerializer(many=True)
 
     def create(self, validated_data):
         event = validated_data.pop("event")
@@ -87,7 +148,14 @@ class EventSerializer(serializers.Serializer):
         todos = validated_data.pop("todos")
         Todo.objects.filter(event=instance).delete()
         for todo in todos:
-            Todo.objects.create(event=instance, **todo)     
+            Todo.objects.create(event=instance, **todo)
+
+        products = validated_data.pop("products")
+        for product in products:
+            UserProductLink.objects.filter(pk=product["id"]).update(
+                status=product["status"]
+            )
+
         return event
 
     def validate(self, data):

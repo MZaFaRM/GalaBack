@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from utils.response import CustomResponse, HandleException
 
 from ..models import Event
-from .serializers import EventSerializer, GetEventSerializer
+from .serializers import EventSerializer, GetEventListSerializer, GetEventSerializer
 
 
 class EventAPIView(APIView):
@@ -13,7 +13,7 @@ class EventAPIView(APIView):
         try:
             if pk is None:
                 events = Event.objects.all()
-                serializer = GetEventSerializer(events, many=True)
+                serializer = GetEventListSerializer(events, many=True)
                 return CustomResponse(
                     status.HTTP_200_OK,
                     "Events retrieved successfully",

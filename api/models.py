@@ -1,7 +1,11 @@
 import uuid
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+class CustomUser(AbstractUser):
+    mobile = models.CharField(max_length=10, blank=True, null=True)
 
 
 class Product(models.Model):
@@ -22,7 +26,7 @@ class Product(models.Model):
 
 class Rating(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     rating = models.IntegerField()
     comment = models.TextField()
@@ -32,9 +36,10 @@ class UserProductLink(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     event = models.ForeignKey("Event", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, default="1")
-    status = models.CharField(max_length=50)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, default="1")
+    status = models.CharField(max_length=50, default="pending")
     quantity = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Event(models.Model):
@@ -48,7 +53,7 @@ class Event(models.Model):
 class Todo(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, blank=True, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, default="1")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, default="1")
     data = models.TextField()
     status = models.BooleanField(max_length=50, default=None, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
