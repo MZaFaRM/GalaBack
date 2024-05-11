@@ -6,7 +6,7 @@ class CustomResponse:
     def __init__(self, status_code, message, data=None, error=None):
         self.status_code = status_code
         self.message = message
-        self.data = data or {}
+        self.data = data or []
         self.error = error or ""
 
     def to_dict(self):
@@ -21,7 +21,7 @@ class CustomResponse:
 
 
 class HandleException:
-    def __init__(self, message: str, data, exception: Exception = None) -> None:
+    def __init__(self, message: str, data=None, exception: Exception = None) -> None:
         self.status_code = 401 if isinstance(exception, AuthError) else 400
         self.message = message
         self.error = str(exception) if exception else "Validation Error"

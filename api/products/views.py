@@ -1,20 +1,25 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
-from ..models import Product
-from . import serializers
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
 from utils.response import CustomResponse, HandleException
-from utils.exceptions import ValidationError
+
+from ..models import Product, Rating
+from . import serializers
 
 
 class ProductAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, pk=None):
         if pk is None:
             products = Product.objects.all()
             serializer = serializers.ProductListSerializer(products, many=True)
         else:
             product = Product.objects.get(pk=pk)
-            serializer = serializers.ProductSerializer(product)
+            serializer = serializers.ProductSerializer(
+                product, context={"request": request}
+            )
 
         return CustomResponse(
             status_code=status.HTTP_200_OK,
@@ -29,7 +34,7 @@ class ProductAPIView(APIView):
                 message="Invalid data provided",
                 data=serializer.errors,
             ).send_response()
-        serializer.save()
+        serializer.save(created_by=request.user)
         return CustomResponse(
             status_code=status.HTTP_201_CREATED,
             message="Product created successfully",
@@ -59,7 +64,7 @@ class ProductAPIView(APIView):
                 return HandleException(
                     message="Invalid data provided", exception=serializer.errors
                 ).send_response()
-            serializer.save()
+            serializer.save(created_by=request.user)
             return CustomResponse(
                 status_code=status.HTTP_200_OK,
                 message="Product updated successfully",
@@ -72,14 +77,44 @@ class ProductAPIView(APIView):
 
 
 class AddProductToEvent(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         serializer = serializers.ProductEventSerializer(data=request.data, many=True)
         if not serializer.is_valid():
             return HandleException(
                 message="Invalid data provided", data=serializer.errors
             ).send_response()
-        serializer.save()
+        serializer.save(user=request.user)
         return CustomResponse(
             status_code=status.HTTP_200_OK,
             message="Product added to event successfully",
         ).to_dict()
+
+
+class RatingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = serializers.RatingSerializer(data=request.data)
+        if not serializer.is_valid():
+            return HandleException(
+                message="Invalid data provided", data=serializer.errors
+            ).send_response()
+        serializer.save(user=request.user)
+        return CustomResponse(
+            status_code=status.HTTP_200_OK,
+            message="Rating added successfully",
+        ).to_dict()
+
+    def delete(self, request):
+        try:
+            request.user.user_ratings.all().delete()
+            return CustomResponse(
+                status_code=status.HTTP_200_OK,
+                message="Rating deleted successfully",
+            ).to_dict()
+        except Rating.DoesNotExist as e:
+            return HandleException(
+                message="Rating does not exist", exception=e
+            ).send_response()

@@ -126,15 +126,19 @@ class EventSerializer(serializers.Serializer):
     products = BaseProductSerializer(many=True)
 
     def create(self, validated_data):
+        user = self.context["request"].user
+
         event = validated_data.pop("event")
-        event = Event.objects.create(**event)
+        event = Event.objects.create(user=user, **event)
 
         todos = validated_data.pop("todos")
         for todo in todos:
-            Todo.objects.create(event=event, **todo)
+            Todo.objects.create(user=user, event=event, **todo)
         return event
 
     def update(self, instance, validated_data):
+        user = self.context["request"].user
+
         event = validated_data.pop("event")
 
         if os.path.isfile(instance.image.path):
@@ -146,15 +150,17 @@ class EventSerializer(serializers.Serializer):
         instance.save()
 
         todos = validated_data.pop("todos")
-        Todo.objects.filter(event=instance).delete()
+        Todo.objects.filter(user=user, event=instance).delete()
         for todo in todos:
-            Todo.objects.create(event=instance, **todo)
+            Todo.objects.create(user=user, event=instance, **todo)
 
         products = validated_data.pop("products")
         for product in products:
-            UserProductLink.objects.filter(pk=product["id"]).update(
-                status=product["status"]
-            )
+            link = UserProductLink.objects.filter(user=user, pk=product["id"])
+            if product["status"] != "cancelled":
+                link.update(status=product["status"])
+            else:
+                link.delete()
 
         return event
 

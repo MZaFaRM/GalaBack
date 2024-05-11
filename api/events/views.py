@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from utils.response import CustomResponse, HandleException
@@ -9,10 +9,16 @@ from .serializers import EventSerializer, GetEventListSerializer, GetEventSerial
 
 
 class EventAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, pk=None):
         try:
             if pk is None:
-                events = Event.objects.all()
+                events = (
+                    Event.objects.filter(user=request.user)
+                    .all()
+                    .order_by("-created_at")
+                )
                 serializer = GetEventListSerializer(events, many=True)
                 return CustomResponse(
                     status.HTTP_200_OK,
@@ -20,7 +26,7 @@ class EventAPIView(APIView):
                     data=serializer.data,
                 ).to_dict()
             else:
-                event = Event.objects.get(pk=pk)
+                event = Event.objects.get(pk=pk, user=request.user)
                 serializer = GetEventSerializer(event)
                 return CustomResponse(
                     status.HTTP_200_OK,
@@ -34,7 +40,9 @@ class EventAPIView(APIView):
 
     def post(self, request):
         try:
-            serializer = EventSerializer(data=request.data)
+            serializer = EventSerializer(
+                data=request.data, context={"request": request}
+            )
             if serializer.is_valid():
                 event = serializer.save()
                 return CustomResponse(
@@ -53,7 +61,9 @@ class EventAPIView(APIView):
     def patch(self, request, pk):
         try:
             event = Event.objects.get(pk=pk)
-            serializer = EventSerializer(event, data=request.data, partial=True)
+            serializer = EventSerializer(
+                event, data=request.data, partial=True, context={"request": request}
+            )
             if serializer.is_valid():
                 serializer.save()
                 return CustomResponse(
@@ -75,7 +85,7 @@ class EventAPIView(APIView):
             event = Event.objects.get(pk=pk)
             event.delete()
             return CustomResponse(
-                status.HTTP_204_NO_CONTENT, "Event deleted successfully"
+                status.HTTP_200_OK, "Event deleted successfully"
             ).to_dict()
         except Event.DoesNotExist as e:
             return HandleException(
