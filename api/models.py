@@ -9,6 +9,11 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = "mobile"
     mobile = models.CharField(unique=True, max_length=10)
 
+    REQUIRED_FIELDS = ["username", "first_name"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.mobile}"
+
 
 class Product(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
@@ -27,6 +32,9 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return f"{self.name} by {self.company_name}"
+
 
 class Rating(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
@@ -35,6 +43,9 @@ class Rating(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     rating = models.IntegerField()
     comment = models.TextField()
+    
+    def __str__(self):
+        return f"{self.rating}* {self.comment}"
 
 
 class UserProductLink(models.Model):
@@ -45,6 +56,9 @@ class UserProductLink(models.Model):
     status = models.CharField(max_length=50, default="pending")
     quantity = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.product.name} by {self.user.first_name}"
 
 
 class Event(models.Model):
@@ -55,6 +69,9 @@ class Event(models.Model):
     notes = models.TextField(blank=True, null=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
 
 
 class Todo(models.Model):
@@ -64,3 +81,6 @@ class Todo(models.Model):
     data = models.TextField()
     status = models.BooleanField(max_length=50, default=None, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.user.first_name
